@@ -9,6 +9,9 @@ const int ledPin = 2;
 // Унікальний ID для ваших воріт (змініть на свій!)
 const String GATE_ID = "roman_zvir_2024";
 
+// Поточний стан воріт
+String currentState = "closed"; // closed або open
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastReconnectAttempt = 0;
@@ -37,7 +40,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   String controlTopic = "gate/" + GATE_ID + "/control";
   if (String(topic) == controlTopic) {
-    if (msg == "open") {
+    if (msg == "get_state") {
+      // Запит поточного стану
+      String statusTopic = "gate/" + GATE_ID + "/status";
+      String stateMsg = "state_" + currentState;
+      client.publish(statusTopic.c_str(), stateMsg.c_str());
+      Serial.print("📤 Відправлено поточний стан: ");
+      Serial.println(stateMsg);
+      
+    } else if (msg == "open") {
       Serial.println("🚪 ВІДКРИВАЮ ВОРОТА!");
       
       // Повідомляємо що починаємо відкривати
@@ -51,6 +62,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
         delay(500);
       }
       digitalWrite(ledPin, HIGH); // Залишаємо світитися (відкрито)
+      
+      // Зберігаємо стан
+      currentState = "open";
       
       // Повідомляємо що відкрито
       client.publish(statusTopic.c_str(), "opened");
@@ -71,6 +85,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
         delay(500);
       }
       digitalWrite(ledPin, LOW); // Вимикаємо (закрито)
+      
+      // Зберігаємо стан
+      currentState = "closed";
       
       // Повідомляємо що закрито
       client.publish(statusTopic.c_str(), "closed");

@@ -80,7 +80,15 @@ const GateControl = () => {
             setStatus('Ворота зачинені');
           } else if (msg === 'online') {
             console.log('✅ ESP32 в мережі');
+            // Не змінюємо стан - ESP32 надішле поточний статус
+          } else if (msg === 'state_open') {
+            // Поточний стан від ESP32
+            setGateState('open');
+            setStatus('Ворота відчинені');
+          } else if (msg === 'state_closed') {
+            // Поточний стан від ESP32
             setGateState('closed');
+            setStatus('Ворота зачинені');
           }
         };
 
@@ -94,8 +102,19 @@ const GateControl = () => {
             console.log('✅ Підключено до MQTT брокера (EMQX)');
             
             const statusTopic = `gate/${GATE_ID}/status`;
+            const controlTopic = `gate/${GATE_ID}/control`;
+            
             client.subscribe(statusTopic, {
-              onSuccess: () => console.log(`✅ Підписано на ${statusTopic}`),
+              onSuccess: () => {
+                console.log(`✅ Підписано на ${statusTopic}`);
+                
+                // Запитуємо поточний стан воріт
+                const stateRequest = new window.Paho.MQTT.Message('get_state');
+                stateRequest.destinationName = controlTopic;
+                stateRequest.qos = 0;
+                client.send(stateRequest);
+                console.log('📤 Запит поточного стану воріт');
+              },
               onFailure: (err) => console.error('❌ Помилка підписки:', err)
             });
           },
